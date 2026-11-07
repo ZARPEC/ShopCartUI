@@ -49,7 +49,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const tieneSesionGuardada = localStorage.getItem(SESION_FLAG_KEY) === 'true';
 
-    // Si no ha iniciado sesión, NO envía ninguna petición a /auth/refresh
+    // Si no ha iniciado sesión, no envía ninguna petición a /auth/refresh
     if (!tieneSesionGuardada) {
       setCargandoAuth(false);
       return;
