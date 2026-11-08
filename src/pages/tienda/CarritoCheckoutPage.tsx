@@ -484,7 +484,7 @@ export const CarritoCheckoutPage: React.FC = () => {
                   type="text"
                   value={codigoCuponInput}
                   onChange={(e) => setCodigoCuponInput(e.target.value.toUpperCase())}
-                  placeholder="Ej. KEMIK10"
+                  placeholder="Ej. SHOP10"
                   className="flex-1 border border-slate-300 rounded-lg px-3 py-1.5 text-sm uppercase"
                 />
                 <button

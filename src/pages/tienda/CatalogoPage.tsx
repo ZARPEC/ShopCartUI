@@ -2,6 +2,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { Search, SlidersHorizontal, AlertCircle, PackageOpen, ChevronLeft, ChevronRight } from 'lucide-react';
 import { http } from '../../api/http';
+import { useDebounce } from '../../hooks/useDebounce';
 
 interface Categoria {
   IDCategoria: number;
@@ -30,8 +31,7 @@ export const CatalogoPage: React.FC = () => {
 
   // 1. Estado inmediato del input (lo que teclea el usuario)
   const [buscar, setBuscar] = useState('');
-  // 2. Estado con Debounce (solo se actualiza tras 400ms de inactividad para no saturar SQL)
-  const [busquedaDebounced, setBusquedaDebounced] = useState('');
+
 
   // Filtros controlados
   const [categoriaSlug, setCategoriaSlug] = useState('');
@@ -43,6 +43,10 @@ export const CatalogoPage: React.FC = () => {
   const [totalPaginas, setTotalPaginas] = useState(1);
   const [totalRegistros, setTotalRegistros] = useState(0);
 
+  const [busquedaDebounced, setBusquedaDebounced] = useDebounce(buscar, 400);
+  const [precioMinDebounced] = useDebounce(precioMin, 400);
+  const [precioMaxDebounced] = useDebounce(precioMax, 400);
+
   // Estados visuales obligatorios (Pág. 9: carga, vacío y error)
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -52,18 +56,12 @@ export const CatalogoPage: React.FC = () => {
     http
       .get('/catalogo/categorias')
       .then((res) => setCategorias(res.data.categorias || []))
-      .catch(() => {});
+      .catch(() => { });
   }, []);
 
-  // Temporizador Debounce: espera 400ms tras la última tecla pulsada
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setBusquedaDebounced(buscar);
-      setPagina(1);
-    }, 400);
-
-    return () => clearTimeout(timer); // Si sigue tecleando, cancela el timer anterior
-  }, [buscar]);
+    setPagina(1);
+  }, [busquedaDebounced, precioMinDebounced, precioMaxDebounced]);
 
   // Consulta paginada hacia el Backend y SQL Server
   const cargarProductos = useCallback(async () => {
@@ -77,8 +75,8 @@ export const CatalogoPage: React.FC = () => {
       };
       if (busquedaDebounced.trim()) params.buscar = busquedaDebounced.trim();
       if (categoriaSlug) params.categoria = categoriaSlug;
-      if (precioMin) params.precioMin = Number(precioMin);
-      if (precioMax) params.precioMax = Number(precioMax);
+      if (precioMinDebounced) params.precioMin = Number(precioMinDebounced);
+      if (precioMaxDebounced) params.precioMax = Number(precioMaxDebounced);
       if (soloDisponibles) params.soloDisponibles = true;
 
       const { data } = await http.get('/catalogo/productos', { params });
@@ -90,7 +88,7 @@ export const CatalogoPage: React.FC = () => {
     } finally {
       setCargando(false);
     }
-  }, [busquedaDebounced, categoriaSlug, precioMin, precioMax, soloDisponibles, orden, pagina]);
+  }, [busquedaDebounced, categoriaSlug, precioMinDebounced, precioMaxDebounced, soloDisponibles, orden, pagina]);
 
   useEffect(() => {
     cargarProductos();
@@ -116,7 +114,7 @@ export const CatalogoPage: React.FC = () => {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      {/* Banner y Buscador Superior estilo Kemik */}
+      {/* Banner y Buscador Superior*/}
       <div className="bg-linear-to-r from-slate-900 to-slate-800 rounded-2xl p-6 sm:p-8 text-white mb-8 shadow-md">
         <div className="max-w-2xl">
           <h1 className="text-2xl sm:text-3xl font-extrabold mb-2">
@@ -176,10 +174,7 @@ export const CatalogoPage: React.FC = () => {
             type="number"
             min={0}
             value={precioMin}
-            onChange={(e) => {
-              setPrecioMin(e.target.value);
-              setPagina(1);
-            }}
+            onChange={(e) => setPrecioMin(e.target.value)}
             placeholder="0"
             className="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 text-sm"
           />
@@ -191,10 +186,7 @@ export const CatalogoPage: React.FC = () => {
             type="number"
             min={0}
             value={precioMax}
-            onChange={(e) => {
-              setPrecioMax(e.target.value);
-              setPagina(1);
-            }}
+            onChange={(e) => setPrecioMax(e.target.value)}
             placeholder="10000"
             className="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 text-sm"
           />
@@ -313,9 +305,8 @@ export const CatalogoPage: React.FC = () => {
                     )}
 
                     <span
-                      className={`absolute top-3 right-3 text-xs font-bold px-2.5 py-1 rounded-full ${
-                        sinStock ? 'bg-red-100 text-red-700' : 'bg-emerald-100 text-emerald-800'
-                      }`}
+                      className={`absolute top-3 right-3 text-xs font-bold px-2.5 py-1 rounded-full ${sinStock ? 'bg-red-100 text-red-700' : 'bg-emerald-100 text-emerald-800'
+                        }`}
                     >
                       {sinStock ? 'Agotado' : `${prod.StockTotalDisponible} disp.`}
                     </span>
