@@ -28,8 +28,12 @@ export const CatalogoPage: React.FC = () => {
   const [categorias, setCategorias] = useState<Categoria[]>([]);
   const [productos, setProductos] = useState<ProductoItem[]>([]);
 
-  // Filtros controlados enviados al servidor
+  // 1. Estado inmediato del input (lo que teclea el usuario)
   const [buscar, setBuscar] = useState('');
+  // 2. Estado con Debounce (solo se actualiza tras 400ms de inactividad para no saturar SQL)
+  const [busquedaDebounced, setBusquedaDebounced] = useState('');
+
+  // Filtros controlados
   const [categoriaSlug, setCategoriaSlug] = useState('');
   const [precioMin, setPrecioMin] = useState('');
   const [precioMax, setPrecioMax] = useState('');
@@ -39,10 +43,11 @@ export const CatalogoPage: React.FC = () => {
   const [totalPaginas, setTotalPaginas] = useState(1);
   const [totalRegistros, setTotalRegistros] = useState(0);
 
-  // Estados visibles obligatorios (Pág. 9: carga, vacío y error)
+  // Estados visuales obligatorios (Pág. 9: carga, vacío y error)
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Carga inicial de categorías
   useEffect(() => {
     http
       .get('/catalogo/categorias')
@@ -50,6 +55,17 @@ export const CatalogoPage: React.FC = () => {
       .catch(() => {});
   }, []);
 
+  // Temporizador Debounce: espera 400ms tras la última tecla pulsada
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setBusquedaDebounced(buscar);
+      setPagina(1);
+    }, 400);
+
+    return () => clearTimeout(timer); // Si sigue tecleando, cancela el timer anterior
+  }, [buscar]);
+
+  // Consulta paginada hacia el Backend y SQL Server
   const cargarProductos = useCallback(async () => {
     setCargando(true);
     setError(null);
@@ -59,7 +75,7 @@ export const CatalogoPage: React.FC = () => {
         limite: 8,
         orden,
       };
-      if (buscar.trim()) params.buscar = buscar.trim();
+      if (busquedaDebounced.trim()) params.buscar = busquedaDebounced.trim();
       if (categoriaSlug) params.categoria = categoriaSlug;
       if (precioMin) params.precioMin = Number(precioMin);
       if (precioMax) params.precioMax = Number(precioMax);
@@ -74,20 +90,22 @@ export const CatalogoPage: React.FC = () => {
     } finally {
       setCargando(false);
     }
-  }, [buscar, categoriaSlug, precioMin, precioMax, soloDisponibles, orden, pagina]);
+  }, [busquedaDebounced, categoriaSlug, precioMin, precioMax, soloDisponibles, orden, pagina]);
 
   useEffect(() => {
     cargarProductos();
   }, [cargarProductos]);
 
+  // Si presiona el botón Buscar o Enter, ejecuta la búsqueda de inmediato sin esperar los 400ms
   const handleBuscarSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    setBusquedaDebounced(buscar);
     setPagina(1);
-    cargarProductos();
   };
 
   const limpiarFiltros = () => {
     setBuscar('');
+    setBusquedaDebounced('');
     setCategoriaSlug('');
     setPrecioMin('');
     setPrecioMax('');
@@ -101,15 +119,9 @@ export const CatalogoPage: React.FC = () => {
       {/* Banner y Buscador Superior estilo Kemik */}
       <div className="bg-linear-to-r from-slate-900 to-slate-800 rounded-2xl p-6 sm:p-8 text-white mb-8 shadow-md">
         <div className="max-w-2xl">
-          <span className="inline-block bg-amber-500 text-slate-950 text-xs font-extrabold px-2.5 py-1 rounded uppercase tracking-wider mb-3">
-            Precios en Quetzales · IVA 12% Incluido
-          </span>
           <h1 className="text-2xl sm:text-3xl font-extrabold mb-2">
             Todo lo que buscas en tecnología, hogar y moda
           </h1>
-          <p className="text-slate-300 text-sm mb-5">
-            Existencias verificadas en tiempo real con entrega en toda Guatemala.
-          </p>
 
           <form onSubmit={handleBuscarSubmit} className="flex gap-2">
             <div className="relative flex-1">
@@ -117,10 +129,7 @@ export const CatalogoPage: React.FC = () => {
               <input
                 type="text"
                 value={buscar}
-                onChange={(e) => {
-                  setBuscar(e.target.value);
-                  setPagina(1);
-                }}
+                onChange={(e) => setBuscar(e.target.value)}
                 placeholder="Buscar por nombre, marca o descripción (ej. Samsung, Sony, Laptop)..."
                 className="w-full bg-white text-slate-900 pl-10 pr-4 py-2.5 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
               />

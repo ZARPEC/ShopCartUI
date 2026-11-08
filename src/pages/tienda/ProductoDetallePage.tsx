@@ -15,6 +15,7 @@ interface VarianteDetalle {
 
 interface ImagenProducto {
   IDProductoImagen: number;
+  IDVarianteProducto: number | null;
   UrlImagen: string;
   TextoAlternativo: string | null;
   EsPrincipal: boolean;
@@ -46,6 +47,7 @@ export const ProductoDetallePage: React.FC = () => {
   const [agregando, setAgregando] = useState(false);
   const [mensajeCarrito, setMensajeCarrito] = useState<{ tipo: 'ok' | 'error'; texto: string } | null>(null);
 
+
   useEffect(() => {
     const cargarDetalle = async () => {
       setCargando(true);
@@ -59,6 +61,10 @@ export const ProductoDetallePage: React.FC = () => {
         const primeraConStock = prod.variantes.find((v) => v.ExistenciaDisponible > 0) || prod.variantes[0] || null;
         setVarianteActiva(primeraConStock);
         setImagenActiva(prod.imagenes?.[0]?.UrlImagen || null);
+        const fotoVarianteInicial = prod.imagenes?.find(
+          (img) => img.IDVarianteProducto === primeraConStock?.IDVarianteProducto
+        );
+        setImagenActiva(fotoVarianteInicial?.UrlImagen || prod.imagenes?.[0]?.UrlImagen || null);
       } catch {
         setError('No se encontró el producto solicitado o ya no está activo.');
       } finally {
@@ -66,6 +72,8 @@ export const ProductoDetallePage: React.FC = () => {
       }
     };
     cargarDetalle();
+
+
   }, [slug]);
 
   const handleAgregarAlCarrito = async () => {
@@ -143,9 +151,8 @@ export const ProductoDetallePage: React.FC = () => {
                 <button
                   key={img.IDProductoImagen}
                   onClick={() => setImagenActiva(img.UrlImagen)}
-                  className={`w-16 h-16 rounded-lg overflow-hidden border-2 cursor-pointer ${
-                    imagenActiva === img.UrlImagen ? 'border-slate-900' : 'border-transparent opacity-70'
-                  }`}
+                  className={`w-16 h-16 rounded-lg overflow-hidden border-2 cursor-pointer ${imagenActiva === img.UrlImagen ? 'border-slate-900' : 'border-transparent opacity-70'
+                    }`}
                 >
                   <img src={img.UrlImagen} alt="" className="w-full h-full object-cover" />
                 </button>
@@ -194,14 +201,21 @@ export const ProductoDetallePage: React.FC = () => {
                         setVarianteActiva(v);
                         setCantidad(1);
                         setMensajeCarrito(null);
+
+                        // Si esta variante tiene su propia foto asignada, cambiar la foto principal
+                        const fotoVariante = producto.imagenes?.find(
+                          (img) => img.IDVarianteProducto === v.IDVarianteProducto
+                        );
+                        if (fotoVariante) {
+                          setImagenActiva(fotoVariante.UrlImagen);
+                        }
                       }}
-                      className={`px-3.5 py-2 rounded-lg text-sm font-semibold border transition-all cursor-pointer ${
-                        seleccionada
-                          ? 'bg-slate-900 text-white border-slate-900 shadow-xs'
-                          : agotada
+                      className={`px-3.5 py-2 rounded-lg text-sm font-semibold border transition-all cursor-pointer ${seleccionada
+                        ? 'bg-slate-900 text-white border-slate-900 shadow-xs'
+                        : agotada
                           ? 'bg-slate-100 text-slate-400 border-slate-200 line-through'
                           : 'bg-white text-slate-800 border-slate-300 hover:border-slate-900'
-                      }`}
+                        }`}
                     >
                       {v.NombreVariante}
                     </button>
@@ -223,11 +237,10 @@ export const ProductoDetallePage: React.FC = () => {
           <div>
             {mensajeCarrito && (
               <div
-                className={`mb-4 p-3 rounded-lg text-sm font-medium flex items-center justify-between ${
-                  mensajeCarrito.tipo === 'ok'
-                    ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
-                    : 'bg-red-50 text-red-700 border border-red-200'
-                }`}
+                className={`mb-4 p-3 rounded-lg text-sm font-medium flex items-center justify-between ${mensajeCarrito.tipo === 'ok'
+                  ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
+                  : 'bg-red-50 text-red-700 border border-red-200'
+                  }`}
               >
                 <span className="flex items-center gap-1.5">
                   {mensajeCarrito.tipo === 'ok' && <Check className="w-4 h-4" />}
