@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
+import React, { createContext, useEffect, useRef, useState } from 'react';
 import { http, setAccessToken } from '../api/http';
 
 export type RolUsuario = 'CLIENTE' | 'OPERADOR' | 'ADMINISTRADOR';
@@ -10,7 +10,7 @@ export interface UsuarioSesion {
   rol: RolUsuario;
 }
 
-interface AuthContextType {
+export interface AuthContextType {
   usuario: UsuarioSesion | null;
   cargandoAuth: boolean;
   iniciarSesion: (correoElectronico: string, password: string) => Promise<UsuarioSesion>;
@@ -24,7 +24,7 @@ interface AuthContextType {
   cerrarSesion: () => Promise<void>;
 }
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+export const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 const SESION_FLAG_KEY = 'shopcart_sesion_activa';
 
@@ -119,11 +119,4 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     </AuthContext.Provider>
   );
 };
-
-export const useAuth = (): AuthContextType => {
-  const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error('useAuth debe utilizarse dentro de un AuthProvider');
-  }
-  return context;
-};
+export { useAuth } from '../hooks/useAuth';
