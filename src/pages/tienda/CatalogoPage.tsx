@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback, useRef } from 'react';
+import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import {
   Search,
@@ -17,12 +17,14 @@ import {
   Shirt,
   LayoutGrid,
   ArrowUpRight,
+  CornerDownRight,
 } from 'lucide-react';
 import { http } from '../../api/http';
 import { useDebounce } from '../../hooks/useDebounce';
 
 interface Categoria {
   IDCategoria: number;
+  IDCategoriaPadre?: number | null;
   Nombre: string;
   Slug: string;
   TotalProductos: number;
@@ -35,6 +37,7 @@ interface ProductoItem {
   Marca: string | null;
   CategoriaNombre: string;
   CategoriaSlug: string;
+  IDCategoriaPadre?: number | null;
   PrecioMinimo: number;
   PrecioMaximo: number;
   StockTotalDisponible: number;
@@ -43,7 +46,7 @@ interface ProductoItem {
 }
 
 const getCategoryIcon = (slug: string) => {
-  if (slug.includes('tecno')) return <Laptop className="w-4 h-4" />;
+  if (slug.includes('tecno') || slug.includes('celular') || slug.includes('laptop')) return <Laptop className="w-4 h-4" />;
   if (slug.includes('audio')) return <Headphones className="w-4 h-4" />;
   if (slug.includes('hogar')) return <Home className="w-4 h-4" />;
   if (slug.includes('moda')) return <Shirt className="w-4 h-4" />;
@@ -56,7 +59,7 @@ export const CatalogoPage: React.FC = () => {
   const [categorias, setCategorias] = useState<Categoria[]>([]);
   const [productos, setProductos] = useState<ProductoItem[]>([]);
 
-  // Inicializar los filtros y la página desde la URL
+  // Inicializar filtros y página desde la URL (?pagina=2&categoria=...)
   const [buscar, setBuscar] = useState(() => searchParams.get('buscar') || '');
   const [categoriaSlug, setCategoriaSlug] = useState(() => searchParams.get('categoria') || '');
   const [precioMin, setPrecioMin] = useState(() => searchParams.get('precioMin') || '');
@@ -73,7 +76,7 @@ export const CatalogoPage: React.FC = () => {
   const [totalPaginas, setTotalPaginas] = useState(1);
   const [totalRegistros, setTotalRegistros] = useState(0);
 
-  // Debounce
+  // Tu Custom Hook useDebounce
   const [busquedaDebounced, setBusquedaDebounced] = useDebounce(buscar, 400);
   const [precioMinDebounced, setPrecioMinDebounced] = useDebounce(precioMin, 400);
   const [precioMaxDebounced, setPrecioMaxDebounced] = useDebounce(precioMax, 400);
@@ -81,7 +84,6 @@ export const CatalogoPage: React.FC = () => {
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Guarda los valores previos para que React StrictMode NO reinicie pagina a 1 al montar
   const prevFiltrosRef = useRef({
     busquedaDebounced,
     precioMinDebounced,
@@ -95,7 +97,7 @@ export const CatalogoPage: React.FC = () => {
       .catch(() => {});
   }, []);
 
-  // Solo reinicia a página 1 si realmente cambió el texto buscado o el rango de precio
+  // Solo reinicia a página 1 si realmente cambió el texto buscado o el precio
   useEffect(() => {
     const prev = prevFiltrosRef.current;
     if (
@@ -112,7 +114,7 @@ export const CatalogoPage: React.FC = () => {
     }
   }, [busquedaDebounced, precioMinDebounced, precioMaxDebounced]);
 
-  // Sincronizar el estado actual con los parámetros de la URL
+  // Sincronizar el estado con los parámetros de la URL (?pagina=2...)
   useEffect(() => {
     const nuevosParams: Record<string, string> = {};
     if (pagina > 1) nuevosParams.pagina = String(pagina);
@@ -126,6 +128,7 @@ export const CatalogoPage: React.FC = () => {
     setSearchParams(nuevosParams, { replace: true });
   }, [pagina, busquedaDebounced, categoriaSlug, precioMinDebounced, precioMaxDebounced, soloDisponibles, orden, setSearchParams]);
 
+  // Consulta paginada hacia el Backend y SQL Server (incluye productos de categorías hijas)
   const cargarProductos = useCallback(async () => {
     setCargando(true);
     setError(null);
@@ -156,6 +159,31 @@ export const CatalogoPage: React.FC = () => {
     cargarProductos();
   }, [cargarProductos]);
 
+  // 1. Separar categorías raíz (principales)
+  const categoriasPrincipales = useMemo(() => {
+    return categorias.filter((c) => !c.IDCategoriaPadre);
+  }, [categorias]);
+
+  // 2. Determinar qué categoría padre está activa actualmente
+  const categoriaPadreActiva = useMemo(() => {
+    if (!categoriaSlug) return null;
+    const catActual = categorias.find((c) => c.Slug === categoriaSlug);
+    if (!catActual) return null;
+
+    // Si es hija, su padre es quien manda
+    if (catActual.IDCategoriaPadre) {
+      return categorias.find((c) => c.IDCategoria === catActual.IDCategoriaPadre) || null;
+    }
+    // Si no tiene padre, ella misma es la principal
+    return catActual;
+  }, [categorias, categoriaSlug]);
+
+  // 3. Obtener las subcategorías hijas de la categoría padre activa
+  const subcategoriasHijas = useMemo(() => {
+    if (!categoriaPadreActiva) return [];
+    return categorias.filter((c) => c.IDCategoriaPadre === categoriaPadreActiva.IDCategoria);
+  }, [categorias, categoriaPadreActiva]);
+
   const handleBuscarSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setBusquedaDebounced(buscar);
@@ -177,25 +205,25 @@ export const CatalogoPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-slate-50/70 pb-16">
-      {/* Barra Superior */}
+      {/* 1. Barra Superior de Confianza estilo E-commerce Premium */}
       <div className="bg-amber-500 text-slate-950 text-xs font-bold py-2 px-4">
         <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-center sm:justify-between gap-3 text-center">
           <span className="flex items-center gap-1.5">
-            <Sparkles className="w-3.5 h-3.5" /> Cupón 10% OFF en toda la tienda: <strong className="underline">KEMIK10</strong>
+            <Sparkles className="w-3.5 h-3.5" /> Cupón 10% OFF en toda la tienda: <strong className="underline">SHOP10</strong>
           </span>
           <div className="hidden md:flex items-center gap-6">
             <span className="flex items-center gap-1">
               <Truck className="w-3.5 h-3.5" /> Envío Gratis en compras mayores a Q 500.00
             </span>
             <span className="flex items-center gap-1">
-              <ShieldCheck className="w-3.5 h-3.5" /> Precios con IVA 12% Incluido
+              <ShieldCheck className="w-3.5 h-3.5" /> Pago Seguro y Garantizado
             </span>
           </div>
         </div>
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6">
-        {/* Hero Banner */}
+        {/* 2. Hero Banner Moderno */}
         <div className="relative overflow-hidden rounded-3xl bg-linear-to-br from-slate-950 via-slate-900 to-indigo-950 p-6 sm:p-10 text-white shadow-xl mb-8 border border-slate-800">
           <div className="absolute -right-16 -top-16 w-72 h-72 bg-amber-500/20 rounded-full blur-3xl pointer-events-none" />
           <div className="absolute right-20 -bottom-20 w-72 h-72 bg-indigo-500/20 rounded-full blur-3xl pointer-events-none" />
@@ -216,7 +244,6 @@ export const CatalogoPage: React.FC = () => {
               Stock sincronizado al segundo con nuestra bodega central. Reserva garantizada por 15 minutos en tu checkout.
             </p>
 
-            {/* Buscador Principal */}
             <form onSubmit={handleBuscarSubmit} className="flex flex-col sm:flex-row gap-2.5">
               <div className="relative flex-1">
                 <Search className="w-5 h-5 text-slate-400 absolute left-4 top-1/2 -translate-y-1/2" />
@@ -238,55 +265,101 @@ export const CatalogoPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Píldoras Interactivas de Categorías */}
-        <div className="flex items-center gap-2.5 overflow-x-auto pb-3 mb-6 no-scrollbar">
-          <button
-            type="button"
-            onClick={() => {
-              setCategoriaSlug('');
-              setPagina(1);
-            }}
-            className={`flex items-center gap-2 px-4 py-2.5 rounded-full text-xs sm:text-sm font-bold whitespace-nowrap transition-all cursor-pointer ${
-              categoriaSlug === ''
-                ? 'bg-slate-900 text-white shadow-md scale-[1.02]'
-                : 'bg-white text-slate-700 border border-slate-200 hover:border-slate-400'
-            }`}
-          >
-            <LayoutGrid className="w-4 h-4 text-amber-500" />
-            <span>Todas las categorías</span>
-          </button>
+        {/* 3. Fila 1: Píldoras de Categorías Principales */}
+        <div className="space-y-3 mb-6">
+          <div className="flex items-center gap-2.5 overflow-x-auto pb-2 no-scrollbar">
+            <button
+              type="button"
+              onClick={() => {
+                setCategoriaSlug('');
+                setPagina(1);
+              }}
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-full text-xs sm:text-sm font-bold whitespace-nowrap transition-all cursor-pointer ${
+                categoriaSlug === ''
+                  ? 'bg-slate-900 text-white shadow-md scale-[1.02]'
+                  : 'bg-white text-slate-700 border border-slate-200 hover:border-slate-400'
+              }`}
+            >
+              <LayoutGrid className="w-4 h-4 text-amber-500" />
+              <span>Todas las categorías</span>
+            </button>
 
-          {categorias.map((c) => {
-            const activa = categoriaSlug === c.Slug;
-            return (
-              <button
-                key={c.IDCategoria}
-                type="button"
-                onClick={() => {
-                  setCategoriaSlug(activa ? '' : c.Slug);
-                  setPagina(1);
-                }}
-                className={`flex items-center gap-2 px-4 py-2.5 rounded-full text-xs sm:text-sm font-bold whitespace-nowrap transition-all cursor-pointer ${
-                  activa
-                    ? 'bg-slate-900 text-white shadow-md scale-[1.02]'
-                    : 'bg-white text-slate-700 border border-slate-200 hover:border-slate-400'
-                }`}
-              >
-                <span className={activa ? 'text-amber-400' : 'text-slate-500'}>{getCategoryIcon(c.Slug)}</span>
-                <span>{c.Nombre}</span>
-                <span
-                  className={`text-[11px] px-1.5 py-0.5 rounded-full ${
-                    activa ? 'bg-amber-500 text-slate-950' : 'bg-slate-100 text-slate-600'
+            {categoriasPrincipales.map((c) => {
+              const esPadreActivo = categoriaPadreActiva?.IDCategoria === c.IDCategoria;
+              return (
+                <button
+                  key={c.IDCategoria}
+                  type="button"
+                  onClick={() => {
+                    // Al dar clic en la principal, filtra por ella (trayendo también a sus hijas)
+                    setCategoriaSlug(c.Slug);
+                    setPagina(1);
+                  }}
+                  className={`flex items-center gap-2 px-4 py-2.5 rounded-full text-xs sm:text-sm font-bold whitespace-nowrap transition-all cursor-pointer ${
+                    esPadreActivo
+                      ? 'bg-slate-900 text-white shadow-md scale-[1.02]'
+                      : 'bg-white text-slate-700 border border-slate-200 hover:border-slate-400'
                   }`}
                 >
-                  {c.TotalProductos}
-                </span>
+                  <span className={esPadreActivo ? 'text-amber-400' : 'text-slate-500'}>
+                    {getCategoryIcon(c.Slug)}
+                  </span>
+                  <span>{c.Nombre}</span>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* 4. Fila 2: Subcategorías Hijas (Aparece automáticamente cuando la categoría padre tiene hijas) */}
+          {categoriaPadreActiva && subcategoriasHijas.length > 0 && (
+            <div className="bg-amber-50/70 border border-amber-200/80 rounded-2xl p-3 sm:p-4 flex flex-wrap items-center gap-2 animate-fadeIn">
+              <span className="text-xs font-bold text-amber-900 mr-1 flex items-center gap-1">
+                <CornerDownRight className="w-3.5 h-3.5 text-amber-600" />
+                <span>Explorar en {categoriaPadreActiva.Nombre}:</span>
+              </span>
+
+              {/* Opción para ver todo lo del padre (incluyendo todas sus hijas) */}
+              <button
+                type="button"
+                onClick={() => {
+                  setCategoriaSlug(categoriaPadreActiva.Slug);
+                  setPagina(1);
+                }}
+                className={`text-xs font-bold px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
+                  categoriaSlug === categoriaPadreActiva.Slug
+                    ? 'bg-amber-600 text-white shadow-xs'
+                    : 'bg-white text-slate-700 border border-amber-200 hover:bg-amber-100'
+                }`}
+              >
+                Ver todo {categoriaPadreActiva.Nombre}
               </button>
-            );
-          })}
+
+              {/* Botones de las subcategorías hijas */}
+              {subcategoriasHijas.map((hija) => {
+                const esHijaSeleccionada = categoriaSlug === hija.Slug;
+                return (
+                  <button
+                    key={hija.IDCategoria}
+                    type="button"
+                    onClick={() => {
+                      setCategoriaSlug(hija.Slug);
+                      setPagina(1);
+                    }}
+                    className={`text-xs font-bold px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
+                      esHijaSeleccionada
+                        ? 'bg-slate-900 text-amber-400 shadow-xs'
+                        : 'bg-white text-slate-700 border border-slate-200 hover:border-slate-400'
+                    }`}
+                  >
+                    ↳ {hija.Nombre}
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </div>
 
-        {/* Barra de Filtros Secundaria */}
+        {/* 5. Barra de Filtros Secundaria */}
         <div className="bg-white border border-slate-200/80 rounded-2xl p-4 mb-8 shadow-xs flex flex-wrap items-center justify-between gap-4">
           <div className="flex flex-wrap items-center gap-3">
             <div className="flex items-center gap-1.5 text-slate-700 font-bold text-xs uppercase tracking-wider mr-1">
@@ -357,7 +430,7 @@ export const CatalogoPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Estado visible de carga */}
+        {/* Estado visible de CARGA */}
         {cargando && (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 py-4">
             {[1, 2, 3, 4, 5, 6, 7, 8].map((n) => (
@@ -371,7 +444,7 @@ export const CatalogoPage: React.FC = () => {
           </div>
         )}
 
-        {/* Estado visible de error */}
+        {/* Estado visible de ERROR */}
         {!cargando && error && (
           <div className="bg-red-50 border border-red-200 rounded-2xl p-8 text-center my-6">
             <AlertCircle className="w-10 h-10 text-red-600 mx-auto mb-2" />
@@ -386,7 +459,7 @@ export const CatalogoPage: React.FC = () => {
           </div>
         )}
 
-        {/* Estado visible vacio */}
+        {/* Estado visible VACÍO */}
         {!cargando && !error && productos.length === 0 && (
           <div className="bg-white border border-slate-200 rounded-2xl p-12 text-center my-6 shadow-xs">
             <PackageOpen className="w-14 h-14 text-slate-300 mx-auto mb-3" />
@@ -403,7 +476,7 @@ export const CatalogoPage: React.FC = () => {
           </div>
         )}
 
-        {/* Tarjetas de Producto */}
+        {/* 6. Cuadrícula de Productos */}
         {!cargando && !error && productos.length > 0 && (
           <>
             <div className="flex items-center justify-between text-xs text-slate-500 mb-4 font-semibold">

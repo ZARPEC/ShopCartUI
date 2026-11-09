@@ -104,7 +104,7 @@ export const AdminProductosPage: React.FC = () => {
   const [nuevaDesc, setNuevaDesc] = useState('');
   const [nuevaCatId, setNuevaCatId] = useState<number>(1);
 
-  // Modal para Crear Nueva Categoría o Subcategoría Hija (RF-02)
+  // Modal para Crear Nueva Categoría o Subcategoría Hija
   const [modalCategoriaAbierto, setModalCategoriaAbierto] = useState(false);
   const [nombreCat, setNombreCat] = useState('');
   const [slugCat, setSlugCat] = useState('');
@@ -404,7 +404,7 @@ export const AdminProductosPage: React.FC = () => {
     }
   };
 
-  // Crear Categoría o Subcategoría Hija (RF-02)
+  // Crear Categoría o Subcategoría Hija 
   const handleCrearCategoria = async (e: React.FormEvent) => {
     e.preventDefault();
     setGuardando(true);
@@ -437,14 +437,14 @@ export const AdminProductosPage: React.FC = () => {
     }
   };
 
-  // Desactivación Lógica (RF-02)
+  // Desactivación Lógica
   const ejecutarDesactivarProducto = async () => {
     if (!idProducto) return;
     setGuardando(true);
     setAlerta(null);
     try {
       await http.patch(`/catalogo/productos/${idProducto}/desactivar`);
-      setAlerta({ tipo: 'ok', texto: 'Producto desactivado de la tienda pública (RF-02).' });
+      setAlerta({ tipo: 'ok', texto: 'Producto desactivado de la tienda.' });
       setProductoActivo(false);
       await cargarListado();
     } catch {
@@ -461,7 +461,7 @@ export const AdminProductosPage: React.FC = () => {
       abierto: true,
       titulo: '¿Desactivar producto de la tienda?',
       mensaje:
-        'El producto dejará de mostrarse en la tienda pública a los clientes. Cumpliendo con el criterio de aceptación de RF-02, no se eliminará físicamente para preservar las ventas y pedidos pasados.',
+        'El producto dejará de mostrarse en la tienda pública a los clientes. No se eliminará físicamente para preservar las ventas y pedidos pasados.',
       textoConfirmar: 'Sí, desactivar producto',
       colorBoton: 'rojo',
       onConfirmar: ejecutarDesactivarProducto,
@@ -558,7 +558,7 @@ export const AdminProductosPage: React.FC = () => {
         </div>
       )}
 
-      {/* 2. Modal React: Crear Nueva Categoría o Subcategoría Hija (RF-02) */}
+      {/* 2. Modal React: Crear Nueva Categoría o Subcategoría Hija */}
       {modalCategoriaAbierto && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-xs animate-fadeIn overflow-y-auto">
           <form
@@ -568,7 +568,7 @@ export const AdminProductosPage: React.FC = () => {
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
               <div className="flex items-center gap-2 text-slate-900 font-extrabold text-base">
                 <FolderTree className="w-5 h-5 text-amber-500" />
-                <span>Nueva Categoría o Subcategoría (RF-02)</span>
+                <span>Nueva Categoría o Subcategoría</span>
               </div>
               <button
                 type="button"

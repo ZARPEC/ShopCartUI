@@ -94,13 +94,13 @@ export const InventarioKardexPage: React.FC = () => {
   const [totalPaginas, setTotalPaginas] = useState(1);
   const [totalMovimientos, setTotalMovimientos] = useState(0);
 
-  // Formulario de Movimiento / Ajuste en Kardex (RF-03)
+  // Formulario de Movimiento / Ajuste en Kardex
   const [tipoMovimiento, setTipoMovimiento] = useState<'ENTRADA_COMPRA' | 'AJUSTE_POSITIVO' | 'AJUSTE_NEGATIVO'>('ENTRADA_COMPRA');
   const [cantidad, setCantidad] = useState<string>('5');
   const [motivo, setMotivo] = useState<string>('');
   const [costoUnitario, setCostoUnitario] = useState<string>('');
 
-  // Modal para Creación de Cupón con Ámbito y Categoría (RF-05)
+  // Modal para Creación de Cupón con Ámbito y Categoría
   const [modalCuponAbierto, setModalCuponAbierto] = useState(false);
   const [codigoCupon, setCodigoCupon] = useState('');
   const [descCupon, setDescCupon] = useState('');
@@ -274,7 +274,7 @@ export const InventarioKardexPage: React.FC = () => {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 relative">
-      {/* Modal React: Crear Nuevo Cupón Promocional con Ámbito y Categoría (RF-05) */}
+      {/* Modal React: Crear Nuevo Cupón Promocional con Ámbito y Categoría */}
       {modalCuponAbierto && usuario?.rol === 'ADMINISTRADOR' && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-xs animate-fadeIn overflow-y-auto">
           <form
@@ -284,7 +284,7 @@ export const InventarioKardexPage: React.FC = () => {
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
               <div className="flex items-center gap-2 text-slate-900 font-extrabold text-base">
                 <Tag className="w-5 h-5 text-amber-500" />
-                <span>Nuevo Cupón Promocional (RF-05)</span>
+                <span>Nuevo Cupón Promocional </span>
               </div>
               <button
                 type="button"
@@ -359,7 +359,7 @@ export const InventarioKardexPage: React.FC = () => {
                 <input
                   type="text"
                   required
-                  placeholder="KEMIK20"
+                  placeholder="SUPER10"
                   value={codigoCupon}
                   onChange={(e) => setCodigoCupon(e.target.value.toUpperCase())}
                   className="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm font-bold uppercase"
@@ -489,7 +489,7 @@ export const InventarioKardexPage: React.FC = () => {
             </div>
             <div>
               <h1 className="text-2xl font-black text-slate-900 tracking-tight">
-                Control de Inventario y Kardex (RF-03)
+                Control de Inventario y Kardex
               </h1>
               <p className="text-xs sm:text-sm text-slate-500">
                 Historial inmutable, cuadratura matemática por SKU y registro de ajustes justificados.
@@ -640,7 +640,7 @@ export const InventarioKardexPage: React.FC = () => {
             </div>
           </div>
 
-          {/* Tarjetas KPI de Cuadratura de Inventario (RF-03) */}
+          {/* Tarjetas KPI de Cuadratura de Inventario*/}
           {resumen && (
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5">
               <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-xs">
@@ -854,7 +854,7 @@ export const InventarioKardexPage: React.FC = () => {
 
                 <div>
                   <label className="block text-xs font-bold uppercase text-slate-600 mb-2">
-                    Selecciona Tipo de Operación (RF-03):
+                    Selecciona Tipo de Operación:
                   </label>
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     <button
@@ -962,7 +962,7 @@ export const InventarioKardexPage: React.FC = () => {
 
                 <div>
                   <label className="block text-xs font-bold uppercase text-slate-600 mb-1">
-                    Motivo Justificado (Exigido por RF-03, mínimo 5 caracteres)
+                    Motivo Justificado, mínimo 5 caracteres
                   </label>
                   <textarea
                     required

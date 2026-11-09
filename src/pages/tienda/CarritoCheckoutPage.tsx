@@ -49,13 +49,13 @@ export const CarritoCheckoutPage: React.FC = () => {
   const [resumen, setResumen] = useState<ResumenCarrito | null>(null);
   const [codigoCuponInput, setCodigoCuponInput] = useState('');
 
-  // Estados de Checkout (RF-06)
+  // Estados de Checkout 
   const [enModoCheckout, setEnModoCheckout] = useState(false);
   const [expiraReserva, setExpiraReserva] = useState<string | null>(null);
   const [direcciones, setDirecciones] = useState<Direccion[]>([]);
   const [idDireccionSeleccionada, setIdDireccionSeleccionada] = useState<number | null>(null);
   const [idMetodoPago, setIdMetodoPago] = useState<number>(1);
-  // Clave de idempotencia generada 1 sola vez por intento de checkout (RF-06)
+  // Clave de idempotencia generada 1 sola vez por intento de checkout
   const [claveIdempotencia, setClaveIdempotencia] = useState<string>(() => 'chk-' + crypto.randomUUID());
 
   // Formulario de nueva dirección
@@ -139,7 +139,7 @@ export const CarritoCheckoutPage: React.FC = () => {
     setResumen(data.resumen || null);
   };
 
-  // Paso 1 del Checkout: Verificar sesión, reservar stock por 15 min y cargar direcciones (RF-06)
+  // Verificar sesión, reservar stock por 15 min y cargar direcciones 
   const handleIniciarCheckout = async () => {
     if (!usuario) {
       navigate('/login');
@@ -193,7 +193,7 @@ export const CarritoCheckoutPage: React.FC = () => {
     }
   };
 
-  // Paso 2 del Checkout: Confirmar pago idempotente y crear pedido atómico (RF-06)
+  // Confirmar pago idempotente y crear pedido atómico
   const handleConfirmarPago = async () => {
     if (!idDireccionSeleccionada || procesandoPago) return;
     setProcesandoPago(true);
@@ -466,7 +466,7 @@ export const CarritoCheckoutPage: React.FC = () => {
         <div className="bg-white rounded-2xl border border-slate-200 p-6 h-fit shadow-xs space-y-5">
           <h2 className="text-lg font-extrabold text-slate-900">Resumen de Compra</h2>
 
-          {/* Formulario de Cupón (RF-05) */}
+          {/* Formulario de Cupón */}
           <div>
             <label className="block text-xs font-bold uppercase text-slate-600 mb-1.5">Cupón de descuento</label>
             {resumen?.CodigoCupon ? (
