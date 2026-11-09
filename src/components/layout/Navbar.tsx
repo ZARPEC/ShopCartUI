@@ -1,3 +1,4 @@
+// src/components/layout/Navbar.tsx
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
@@ -61,7 +62,7 @@ export const Navbar: React.FC = () => {
           </button>
         </div>
 
-        {/* Menú Escritorio (md y superior) */}
+        {/* 1. Menú Escritorio (md y superior) */}
         <nav className="hidden md:flex items-center gap-5 text-sm font-medium">
           <Link to="/" className="hover:text-amber-400 transition-colors">
             Catálogo
@@ -90,11 +91,18 @@ export const Navbar: React.FC = () => {
             </>
           )}
 
+          {/* Opciones exclusivas de ADMINISTRADOR en Escritorio */}
           {usuario?.rol === 'ADMINISTRADOR' && (
-            <Link to="/admin/bitacora" className="flex items-center gap-1 hover:text-amber-400 transition-colors">
-              <ShieldAlert className="w-4 h-4" />
-              <span>Bitácora</span>
-            </Link>
+            <>
+              <Link to="/admin/productos" className="flex items-center gap-1 hover:text-amber-400 transition-colors">
+                <Package className="w-4 h-4" />
+                <span>Productos</span>
+              </Link>
+              <Link to="/admin/bitacora" className="flex items-center gap-1 hover:text-amber-400 transition-colors">
+                <ShieldAlert className="w-4 h-4" />
+                <span>Bitácora</span>
+              </Link>
+            </>
           )}
 
           {usuario ? (
@@ -123,7 +131,7 @@ export const Navbar: React.FC = () => {
         </nav>
       </div>
 
-      {/* Menú Desplegable Móvil (< md, ideal para iPhone SE 375px) */}
+      {/* 2. Menú Desplegable Móvil (< md) */}
       {menuAbierto && (
         <div className="md:hidden bg-slate-800 border-t border-slate-700 px-4 py-3 space-y-2 text-sm">
           <Link
@@ -153,14 +161,24 @@ export const Navbar: React.FC = () => {
             </>
           )}
 
+          {/* Opciones exclusivas de ADMINISTRADOR en Móvil */}
           {usuario?.rol === 'ADMINISTRADOR' && (
-            <Link
-              to="/admin/bitacora"
-              onClick={() => setMenuAbierto(false)}
-              className="block py-2 font-medium text-white hover:text-amber-400"
-            >
-              Bitácora de Auditoría
-            </Link>
+            <>
+              <Link
+                to="/admin/productos"
+                onClick={() => setMenuAbierto(false)}
+                className="block py-2 font-medium text-white hover:text-amber-400"
+              >
+                Gestión de Productos
+              </Link>
+              <Link
+                to="/admin/bitacora"
+                onClick={() => setMenuAbierto(false)}
+                className="block py-2 font-medium text-white hover:text-amber-400"
+              >
+                Bitácora de Auditoría
+              </Link>
+            </>
           )}
 
           <div className="pt-2 border-t border-slate-700">
