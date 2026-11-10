@@ -341,7 +341,7 @@ export const AdminProductosPage: React.FC = () => {
       abierto: true,
       titulo: '¿Eliminar imagen de la galería?',
       mensaje:
-        'Esta fotografía será removida permanentemente de la tienda. Esta acción quedará registrada de forma inmutable en la Bitácora de Auditoría.',
+        'Esta fotografía será removida permanentemente de la tienda.',
       textoConfirmar: 'Sí, eliminar imagen',
       colorBoton: 'rojo',
       onConfirmar: () => ejecutarEliminarImagen(idImagen),

@@ -174,7 +174,7 @@ export const AdminUsuariosPage: React.FC = () => {
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
               <div className="flex items-center gap-2 text-slate-900 font-extrabold text-base">
                 <UserPlus className="w-5 h-5 text-amber-500" />
-                <span>Registrar Nuevo Empleado (RF-01)</span>
+                <span>Registrar Nuevo Empleado</span>
               </div>
               <button
                 type="button"

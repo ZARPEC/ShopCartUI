@@ -9,6 +9,8 @@ import {
   CartesianGrid,
 } from 'recharts';
 import {
+  AlertTriangle,
+  X,
   TrendingUp,
   ShoppingBag,
   AlertOctagon,
@@ -68,13 +70,43 @@ export const DashboardPedidosPage: React.FC = () => {
   const [topProductos, setTopProductos] = useState<TopProducto[]>([]);
   const [pedidos, setPedidos] = useState<PedidoItem[]>([]);
 
-  // Filtros de tabla de pedidos
+  // Filtros de tabla de pedidos 
   const [filtroEstado, setFiltroEstado] = useState<string>('');
   const [paginaPedidos, setPaginaPedidos] = useState(1);
   const [totalPaginasPedidos, setTotalPaginasPedidos] = useState(1);
 
   const [cargando, setCargando] = useState(true);
   const [alerta, setAlerta] = useState<{ tipo: 'ok' | 'error'; texto: string } | null>(null);
+  // Modal React para confirmación y motivo de cancelación
+  const [modalCancelar, setModalCancelar] = useState<{
+    abierto: boolean;
+    idPedido: number;
+    numeroPedido: string;
+  }>({
+    abierto: false,
+    idPedido: 0,
+    numeroPedido: '',
+  });
+  const [motivoCancelacion, setMotivoCancelacion] = useState('');
+  const [cancelando, setCancelando] = useState(false);
+
+    const formatearHora = (valor: string | null) => {
+    if (!valor) return '00:00:00';
+    // Si la fecha viene de SQL Server con 'Z' al final (interpretada erróneamente como UTC),
+    // removemos la 'Z' para que el navegador la lea directamente en la hora local de Guatemala
+    const fechaLimpia = typeof valor === 'string' ? valor.replace('Z', '') : valor;
+    const d = new Date(fechaLimpia);
+    return isNaN(d.getTime())
+      ? '00:00:00'
+      : d.toLocaleString('es-GT', {
+          day: '2-digit',
+          month: '2-digit',
+          year: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit',
+        });
+  };
 
   const cargarDashboard = useCallback(async () => {
     setCargando(true);
@@ -125,23 +157,102 @@ export const DashboardPedidosPage: React.FC = () => {
     }
   };
 
-  const handleCancelarPedido = async (idPedido: number) => {
-    const motivo = window.prompt('Ingrese el motivo de cancelación (reintegrará existencias al Kardex):');
-    if (!motivo || motivo.trim().length < 5) return;
+  const abrirModalCancelar = (idPedido: number, numeroPedido?: string) => {
+    setModalCancelar({
+      abierto: true,
+      idPedido,
+      numeroPedido: numeroPedido || `#${idPedido}`,
+    });
+    setMotivoCancelacion('');
+  };
 
+  const ejecutarCancelarPedido = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const { idPedido } = modalCancelar;
+    if (!idPedido || motivoCancelacion.trim().length < 5) return;
+
+    setCancelando(true);
     setAlerta(null);
     try {
-      await http.post(`/checkout/pedidos/${idPedido}/cancelar`, { motivo: motivo.trim() });
-      setAlerta({ tipo: 'ok', texto: `Pedido #${idPedido} cancelado y existencias devueltas al Kardex.` });
+      await http.post(`/checkout/pedidos/${idPedido}/cancelar`, { motivo: motivoCancelacion.trim() });
+      setAlerta({ tipo: 'ok', texto: `Pedido #${idPedido} cancelado exitosamente y existencias devueltas al Kardex.` });
+      setModalCancelar({ abierto: false, idPedido: 0, numeroPedido: '' });
+      setMotivoCancelacion('');
       await cargarDashboard();
     } catch (err) {
       const axiosErr = err as AxiosError<{ mensaje?: string }>;
       setAlerta({ tipo: 'error', texto: axiosErr.response?.data?.mensaje || 'No se pudo cancelar el pedido.' });
+    } finally {
+      setCancelando(false);
     }
   };
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      {/* Modal React: Confirmar Cancelación con Motivo Justificado */}
+      {modalCancelar.abierto && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-xs animate-fadeIn">
+          <form
+            onSubmit={ejecutarCancelarPedido}
+            className="bg-white rounded-3xl p-6 sm:p-7 max-w-md w-full shadow-2xl border border-slate-200 space-y-4"
+          >
+            <div className="flex items-start justify-between">
+              <div className="w-12 h-12 rounded-2xl bg-red-50 border border-red-200 text-red-600 flex items-center justify-center shrink-0">
+                <AlertTriangle className="w-6 h-6" />
+              </div>
+              <button
+                type="button"
+                onClick={() => setModalCancelar({ abierto: false, idPedido: 0, numeroPedido: '' })}
+                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 cursor-pointer transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div>
+              <h3 className="text-lg font-black text-slate-900 tracking-tight">
+                ¿Cancelar orden {modalCancelar.numeroPedido}?
+              </h3>
+              <p className="text-xs text-slate-600 mt-1.5 leading-relaxed">
+                Esta acción anulará el pedido y <strong>reintegrará de inmediato todas las existencias al inventario en el Kardex</strong>.
+              </p>
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold uppercase text-slate-700 mb-1">
+                Motivo Justificado (mínimo 5 letras,):
+              </label>
+              <textarea
+                required
+                minLength={5}
+                rows={3}
+                value={motivoCancelacion}
+                onChange={(e) => setMotivoCancelacion(e.target.value)}
+                placeholder="Ej. Pago no procesado por el banco, solicitud del cliente o dirección inexistente..."
+                className="w-full border border-slate-300 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-red-500"
+              />
+            </div>
+
+            <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setModalCancelar({ abierto: false, idPedido: 0, numeroPedido: '' })}
+                className="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold px-4 py-2.5 rounded-xl text-xs transition-colors cursor-pointer"
+              >
+                No cancelar
+              </button>
+              <button
+                type="submit"
+                disabled={cancelando || motivoCancelacion.trim().length < 5}
+                className="bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white font-extrabold px-5 py-2.5 rounded-xl text-xs transition-colors cursor-pointer shadow-md shadow-red-600/20"
+              >
+                {cancelando ? 'Cancelando...' : 'Confirmar Cancelación'}
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+      
       <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
         <div>
           <h1 className="text-2xl font-black text-slate-900">Dashboard de Ventas y Gestión de Pedidos</h1>
@@ -218,7 +329,7 @@ export const DashboardPedidosPage: React.FC = () => {
         </div>
       )}
 
-      {/* Gráficas del Dashboard con Recharts  */}
+      {/* Gráficas del Dashboard con Recharts (Requisito obligatorio Pág. 9) */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
         <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs">
           <h2 className="text-base font-extrabold text-slate-900 mb-4">Ventas Netas por Categoría (Q)</h2>
@@ -318,7 +429,7 @@ export const DashboardPedidosPage: React.FC = () => {
                     <th className="py-2.5 px-2">Cliente / Destino</th>
                     <th className="py-2.5 px-2">Estado Actual</th>
                     <th className="py-2.5 px-2 text-right">Total Neto</th>
-                    <th className="py-2.5 px-2 text-right">Acciones </th>
+                    <th className="py-2.5 px-2 text-right">Acciones</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
@@ -326,7 +437,7 @@ export const DashboardPedidosPage: React.FC = () => {
                     <tr key={p.IDPedido} className="hover:bg-slate-50">
                       <td className="py-3 px-2 font-mono font-bold text-slate-900">{p.NumeroPedido}</td>
                       <td className="py-3 px-2 text-xs text-slate-500 whitespace-nowrap">
-                        {new Date(p.FechaCreacion).toLocaleString('es-GT')}
+                        {formatearHora(p.FechaCreacion)}
                       </td>
                       <td className="py-3 px-2">
                         <span className="font-bold text-slate-800 block">{p.ClienteNombre}</span>
@@ -369,7 +480,7 @@ export const DashboardPedidosPage: React.FC = () => {
                         )}
                         {(p.IDEstadoPedido === 1 || p.IDEstadoPedido === 2) && (
                           <button
-                            onClick={() => handleCancelarPedido(p.IDPedido)}
+                            onClick={() => abrirModalCancelar(p.IDPedido, p.NumeroPedido)}
                             className="bg-red-100 hover:bg-red-200 text-red-700 font-bold text-xs px-2.5 py-1 rounded-lg cursor-pointer"
                           >
                             Cancelar
