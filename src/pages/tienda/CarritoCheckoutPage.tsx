@@ -1,4 +1,4 @@
-    import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Trash2, Tag, ShieldCheck, Clock, MapPin, Plus } from 'lucide-react';
 import { AxiosError } from 'axios';
@@ -55,7 +55,7 @@ export const CarritoCheckoutPage: React.FC = () => {
   const [direcciones, setDirecciones] = useState<Direccion[]>([]);
   const [idDireccionSeleccionada, setIdDireccionSeleccionada] = useState<number | null>(null);
   const [idMetodoPago, setIdMetodoPago] = useState<number>(1);
-  // Clave de idempotencia generada 1 sola vez por intento de checkout
+  // Clave de idempotencia generada 1 sola vez por intento de checkout 
   const [claveIdempotencia, setClaveIdempotencia] = useState<string>(() => 'chk-' + crypto.randomUUID());
 
   // Formulario de nueva dirección
@@ -139,7 +139,18 @@ export const CarritoCheckoutPage: React.FC = () => {
     setResumen(data.resumen || null);
   };
 
-  // Verificar sesión, reservar stock por 15 min y cargar direcciones 
+  const formatearHoraVencimiento = (valor: string | null) => {
+    if (!valor) return '15 min';
+    // Si la fecha viene de SQL Server con 'Z' al final (interpretada erróneamente como UTC),
+    // removemos la 'Z' para que el navegador la lea directamente en la hora local de Guatemala
+    const fechaLimpia = typeof valor === 'string' ? valor.replace('Z', '') : valor;
+    const d = new Date(fechaLimpia);
+    return isNaN(d.getTime())
+      ? '15 min'
+      : d.toLocaleTimeString('es-GT', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  };
+
+  // Paso 1 del Checkout: Verificar sesión, reservar stock por 15 min y cargar direcciones
   const handleIniciarCheckout = async () => {
     if (!usuario) {
       navigate('/login');
@@ -188,12 +199,25 @@ export const CarritoCheckoutPage: React.FC = () => {
       setIdDireccionSeleccionada(nueva.IDDireccionCliente);
       setMostrarFormDireccion(false);
     } catch (err) {
-      const axiosErr = err as AxiosError<{ mensaje?: string }>;
-      setAlerta({ tipo: 'error', texto: axiosErr.response?.data?.mensaje || 'Error al registrar dirección.' });
+      const axiosErr = err as AxiosError<{
+        mensaje?: string;
+        errores?: Array<{ campo?: string; mensaje: string }>;
+      }>;
+      const erroresDetallados = axiosErr.response?.data?.errores
+        ?.map((x) => x.mensaje)
+        .join(' · ');
+
+      setAlerta({
+        tipo: 'error',
+        texto:
+          erroresDetallados ||
+          axiosErr.response?.data?.mensaje ||
+          'Error al registrar dirección. Verifica los datos ingresados.',
+      });
     }
   };
 
-  // Confirmar pago idempotente y crear pedido atómico
+  // Paso 2 del Checkout: Confirmar pago idempotente y crear pedido atómico 
   const handleConfirmarPago = async () => {
     if (!idDireccionSeleccionada || procesandoPago) return;
     setProcesandoPago(true);
@@ -226,8 +250,7 @@ export const CarritoCheckoutPage: React.FC = () => {
           <ShieldCheck className="w-14 h-14 text-emerald-600 mx-auto mb-3" />
           <h1 className="text-2xl font-extrabold text-slate-900 mb-2">¡Compra confirmada con éxito!</h1>
           <p className="text-sm text-slate-600 mb-4">
-            Tu pedido <strong className="text-slate-900">{pedidoConfirmado.NumeroPedido}</strong> fue generado de forma
-            atómica y tus precios quedaron congelados.
+            Tu pedido <strong className="text-slate-900">{pedidoConfirmado.NumeroPedido}</strong> se ha completado exitosamente.
           </p>
           <div className="bg-slate-50 rounded-xl p-4 mb-6 text-lg font-bold text-slate-900">
             Total pagado: Q {Number(pedidoConfirmado.TotalPedido).toFixed(2)}
@@ -265,11 +288,10 @@ export const CarritoCheckoutPage: React.FC = () => {
 
       {alerta && (
         <div
-          className={`mb-6 p-4 rounded-xl text-sm font-medium border ${
-            alerta.tipo === 'ok'
+          className={`mb-6 p-4 rounded-xl text-sm font-medium border ${alerta.tipo === 'ok'
               ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
               : 'bg-red-50 border-red-200 text-red-700'
-          }`}
+            }`}
         >
           {alerta.texto}
         </div>
@@ -337,7 +359,7 @@ export const CarritoCheckoutPage: React.FC = () => {
               <div className="flex items-center gap-2 text-amber-800 bg-amber-50 border border-amber-200 px-4 py-3 rounded-xl text-xs font-semibold">
                 <Clock className="w-4 h-4 shrink-0" />
                 <span>
-                  Existencias apartadas por 15 minutos (vencimiento: {expiraReserva ? new Date(expiraReserva).toLocaleTimeString() : '15 min'}).
+                  Existencias apartadas por 15 minutos (vencimiento: {formatearHoraVencimiento(expiraReserva)}).
                 </span>
               </div>
 
@@ -408,14 +430,20 @@ export const CarritoCheckoutPage: React.FC = () => {
                         className="border border-slate-300 rounded-lg px-3 py-1.5 text-sm bg-white"
                       />
                     </div>
-                    <input
-                      type="text"
-                      required
-                      placeholder="Dirección exacta (calle, avenida, número de casa)"
-                      value={direccionExacta}
-                      onChange={(e) => setDireccionExacta(e.target.value)}
-                      className="w-full border border-slate-300 rounded-lg px-3 py-1.5 text-sm bg-white"
-                    />
+                    <div>
+                      <input
+                        type="text"
+                        required
+                        minLength={5}
+                        placeholder="Dirección exacta (calle, avenida, número de casa - mín. 5 letras)"
+                        value={direccionExacta}
+                        onChange={(e) => setDireccionExacta(e.target.value)}
+                        className="w-full border border-slate-300 rounded-lg px-3 py-1.5 text-sm bg-white"
+                      />
+                      <span className="text-[11px] text-slate-400 mt-0.5 block">
+                        Mínimo 5 caracteres (ej. 2da Calle 4-50 Zona 1)
+                      </span>
+                    </div>
                     <button type="submit" className="bg-slate-900 text-white text-xs font-bold px-4 py-2 rounded-lg cursor-pointer">
                       Guardar dirección
                     </button>
@@ -426,11 +454,10 @@ export const CarritoCheckoutPage: React.FC = () => {
                   {direcciones.map((d) => (
                     <label
                       key={d.IDDireccionCliente}
-                      className={`block p-3 rounded-xl border text-sm cursor-pointer ${
-                        idDireccionSeleccionada === d.IDDireccionCliente
+                      className={`block p-3 rounded-xl border text-sm cursor-pointer ${idDireccionSeleccionada === d.IDDireccionCliente
                           ? 'border-slate-900 bg-slate-50'
                           : 'border-slate-200'
-                      }`}
+                        }`}
                     >
                       <input
                         type="radio"
@@ -530,8 +557,15 @@ export const CarritoCheckoutPage: React.FC = () => {
               </button>
               <button
                 type="button"
-                onClick={() => setEnModoCheckout(false)}
-                className="w-full text-xs text-slate-500 hover:text-slate-800 py-1.5 font-semibold cursor-pointer"
+                onClick={async () => {
+                  try {
+                    // Libera el apartado en SQL Server de inmediato
+                    await http.post('/checkout/liberar-reserva', { idCarrito: resumen?.IDCarrito });
+                  } catch { }
+                  setEnModoCheckout(false);
+                  await cargarCarrito();
+                }}
+                className="text-xs font-semibold text-slate-500 hover:text-slate-800 underline block text-center mt-3 cursor-pointer"
               >
                 ← Volver a editar el carrito
               </button>
