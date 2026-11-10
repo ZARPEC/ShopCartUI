@@ -12,6 +12,8 @@ import { BitacoraPage } from './pages/admin/BitacoraPage';
 import { ProtectedRoute } from './routes/ProtectedRoute';
 import { AdminProductosPage } from './pages/admin/AdminProductosPage';
 import { AdminUsuariosPage } from './pages/admin/AdminUsuariosPage';
+import { MisPedidosPage } from './pages/tienda/MisPedidosPage';
+import { PerfilPage } from './pages/tienda/PerfilPage';
 
 export const App: React.FC = () => {
   return (
@@ -25,6 +27,11 @@ export const App: React.FC = () => {
             <Route path="/login" element={<LoginPage />} />
             <Route path="/producto/:slug" element={<ProductoDetallePage />} />
             <Route path="/carrito" element={<CarritoCheckoutPage />} />
+
+            <Route element={<ProtectedRoute rolesPermitidos={['CLIENTE']} />}>
+              <Route path="/mis-pedidos" element={<MisPedidosPage />} />
+              <Route path="/perfil" element={<PerfilPage />} />
+            </Route>
 
             {/* Rutas Protegidas: Operador y Administrador */}
             <Route element={<ProtectedRoute rolesPermitidos={['OPERADOR', 'ADMINISTRADOR']} />}>
