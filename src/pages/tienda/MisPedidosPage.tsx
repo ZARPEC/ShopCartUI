@@ -10,6 +10,7 @@ import {
   XCircle,
   RotateCcw,
   AlertCircle,
+  X,
   Calendar,
   MapPin,
   Tag,
@@ -42,6 +43,7 @@ interface LineaPedidoDetalle {
   NombreProductoCongelado: string;
   AtributosVarianteCongelados: string;
   CantidadComprada: number;
+  CantidadDevuelta?: number;
   PrecioUnitarioCongelado: number;
   TotalNetaLinea: number;
   ProductoSlug: string;
@@ -56,6 +58,17 @@ interface PedidoDetalleCompleto extends PedidoResumen {
   lineas: LineaPedidoDetalle[];
 }
 
+// Estructura para el formulario de devolución del cliente
+interface LineaDevolucionCliente {
+  idPedidoDetalle: number;
+  nombreProducto: string;
+  atributos: string;
+  precioUnitario: number;
+  cantidadComprada: number;
+  cantidadYaDevuelta: number;
+  cantidadADevolver: number;
+}
+
 export const MisPedidosPage: React.FC = () => {
   const navigate = useNavigate();
 
@@ -65,6 +78,13 @@ export const MisPedidosPage: React.FC = () => {
   const [cargandoLista, setCargandoLista] = useState(true);
   const [cargandoDetalle, setCargandoDetalle] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Modal React para que el Cliente solicite
+  const [modalDevolucion, setModalDevolucion] = useState(false);
+  const [lineasDevolucion, setLineasDevolucion] = useState<LineaDevolucionCliente[]>([]);
+  const [motivoDevolucion, setMotivoDevolucion] = useState('');
+  const [procesandoDev, setProcesandoDev] = useState(false);
+  const [mensajeExitoDev, setMensajeExitoDev] = useState<string | null>(null);
 
   const formatearFecha = (valor: string | null) => {
     if (!valor) return '00:00:00';
@@ -83,7 +103,7 @@ export const MisPedidosPage: React.FC = () => {
           second: '2-digit',
         });
   };
-  
+
   const cargarPedidos = useCallback(async () => {
     setCargandoLista(true);
     setError(null);
@@ -114,6 +134,59 @@ export const MisPedidosPage: React.FC = () => {
       // Ignorar error secundario
     } finally {
       setCargandoDetalle(false);
+    }
+  };
+
+  // Abrir Modal de Devolución para el Cliente
+  const abrirModalDevolucionCliente = () => {
+    if (!pedidoSeleccionado) return;
+    const lineas: LineaDevolucionCliente[] = (pedidoSeleccionado.lineas || []).map((l) => ({
+      idPedidoDetalle: l.IDPedidoDetalle,
+      nombreProducto: l.NombreProductoCongelado,
+      atributos: l.AtributosVarianteCongelados,
+      precioUnitario: Number(l.PrecioUnitarioCongelado),
+      cantidadComprada: l.CantidadComprada,
+      cantidadYaDevuelta: l.CantidadDevuelta || 0,
+      cantidadADevolver: 0,
+    }));
+    setLineasDevolucion(lineas);
+    setMotivoDevolucion('');
+    setMensajeExitoDev(null);
+    setModalDevolucion(true);
+  };
+
+  // Enviar Devolución del Cliente a la API
+  const ejecutarDevolucionCliente = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!pedidoSeleccionado) return;
+
+    const lineasAEnviar = lineasDevolucion
+      .filter((l) => l.cantidadADevolver > 0)
+      .map((l) => ({ idPedidoDetalle: l.idPedidoDetalle, cantidad: l.cantidadADevolver }));
+
+    if (lineasAEnviar.length === 0) {
+      alert('Debes indicar al menos una unidad a devolver.');
+      return;
+    }
+    if (motivoDevolucion.trim().length < 5) return;
+
+    setProcesandoDev(true);
+    try {
+      await http.post(`/checkout/pedidos/${pedidoSeleccionado.IDPedido}/devolucion`, {
+        motivo: motivoDevolucion.trim(),
+        lineas: lineasAEnviar,
+      });
+      setMensajeExitoDev('Tu devolución ha sido procesada con éxito y el reembolso ha sido aplicado.');
+      await cargarPedidos();
+      await cargarDetalle(pedidoSeleccionado.IDPedido);
+      setTimeout(() => {
+        setModalDevolucion(false);
+        setMensajeExitoDev(null);
+      }, 2000);
+    } catch {
+      alert('No se pudo procesar la devolución. Intenta de nuevo.');
+    } finally {
+      setProcesandoDev(false);
     }
   };
 
@@ -164,6 +237,144 @@ export const MisPedidosPage: React.FC = () => {
   return (
     <div className="min-h-screen bg-slate-50/70 pb-16">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-8">
+        {/* Modal React Responsivo: Solicitar Devolución para el Cliente*/}
+        {modalDevolucion && pedidoSeleccionado && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/60 backdrop-blur-xs animate-fadeIn overflow-y-auto">
+            <form
+              onSubmit={ejecutarDevolucionCliente}
+              className="bg-white rounded-3xl p-5 sm:p-7 max-w-xl w-full shadow-2xl border border-slate-200 space-y-4 my-8"
+            >
+              <div className="flex items-start justify-between pb-3 border-b border-slate-100">
+                <div className="flex items-center gap-2">
+                  <div className="w-10 h-10 rounded-xl bg-purple-50 border border-purple-200 text-purple-700 flex items-center justify-center">
+                    <RotateCcw className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-base sm:text-lg font-black text-slate-900 tracking-tight">
+                      Solicitud de Devolución
+                    </h3>
+                    <span className="text-xs font-mono font-bold text-slate-500">
+                      Pedido: {pedidoSeleccionado.NumeroPedido}
+                    </span>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setModalDevolucion(false)}
+                  className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {mensajeExitoDev ? (
+                <div className="p-6 text-center space-y-2">
+                  <CheckCircle2 className="w-12 h-12 text-emerald-600 mx-auto" />
+                  <h4 className="text-base font-bold text-slate-900">¡Devolución Procesada!</h4>
+                  <p className="text-xs text-slate-600">{mensajeExitoDev}</p>
+                </div>
+              ) : (
+                <>
+                  <p className="text-xs text-slate-600 leading-relaxed">
+                    Selecciona los productos y la cantidad exacta que deseas devolver. El importe correspondiente será
+                    reintegrado a tu cuenta.
+                  </p>
+
+                  {/* Lista responsiva de productos para devolver */}
+                  <div className="space-y-2.5 max-h-56 overflow-y-auto pr-1">
+                    {lineasDevolucion.map((l, index) => {
+                      const maxDisp = l.cantidadComprada - l.cantidadYaDevuelta;
+                      return (
+                        <div
+                          key={l.idPedidoDetalle}
+                          className="p-3 rounded-2xl bg-slate-50 border border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs"
+                        >
+                          <div className="min-w-0 flex-1">
+                            <span className="font-bold text-slate-900 block truncate">{l.nombreProducto}</span>
+                            <span className="text-[11px] text-slate-400 block">{l.atributos}</span>
+                            <span className="text-[11px] text-slate-500 mt-0.5 block">
+                              Comprados: <strong>{l.cantidadComprada}</strong> · Disponibles para devolver:{' '}
+                              <strong className="text-purple-700">{maxDisp} u.</strong> · Precio: Q{' '}
+                              {l.precioUnitario.toFixed(2)}
+                            </span>
+                          </div>
+
+                          <div className="flex items-center gap-2 self-end sm:self-center">
+                            <label className="text-[11px] font-bold text-slate-500 uppercase">Devolver:</label>
+                            <select
+                              disabled={maxDisp <= 0}
+                              value={l.cantidadADevolver}
+                              onChange={(e) => {
+                                const copia = [...lineasDevolucion];
+                                copia[index].cantidadADevolver = Number(e.target.value);
+                                setLineasDevolucion(copia);
+                              }}
+                              className="bg-white border border-slate-300 rounded-xl px-2.5 py-1 text-xs font-bold text-slate-900 disabled:opacity-40"
+                            >
+                              {Array.from({ length: maxDisp + 1 }, (_, i) => i).map((num) => (
+                                <option key={num} value={num}>
+                                  {num} u.
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* Reembolso calculado */}
+                  <div className="p-3 bg-purple-50/60 border border-purple-200 rounded-2xl flex items-center justify-between text-xs">
+                    <span className="font-bold text-purple-900">Total a Reembolsar:</span>
+                    <span className="text-base font-black text-purple-950 font-mono">
+                      Q{' '}
+                      {lineasDevolucion
+                        .reduce((acc, curr) => acc + curr.cantidadADevolver * curr.precioUnitario, 0)
+                        .toFixed(2)}
+                    </span>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold uppercase text-slate-700 mb-1">
+                      Motivo de la Devolución (mínimo 5 letras):
+                    </label>
+                    <textarea
+                      required
+                      minLength={5}
+                      rows={2}
+                      value={motivoDevolucion}
+                      onChange={(e) => setMotivoDevolucion(e.target.value)}
+                      placeholder="Ej. Talla incorrecta, producto dañado o no correspondía a lo solicitado..."
+                      className="w-full border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    />
+                  </div>
+
+                  <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-100">
+                    <button
+                      type="button"
+                      onClick={() => setModalDevolucion(false)}
+                      className="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold px-4 py-2 rounded-xl text-xs cursor-pointer"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={
+                        procesandoDev ||
+                        motivoDevolucion.trim().length < 5 ||
+                        !lineasDevolucion.some((l) => l.cantidadADevolver > 0)
+                      }
+                      className="bg-purple-700 hover:bg-purple-800 disabled:opacity-50 text-white font-extrabold px-5 py-2 rounded-xl text-xs cursor-pointer shadow-md shadow-purple-700/20"
+                    >
+                      {procesandoDev ? 'Enviando...' : 'Confirmar Devolución'}
+                    </button>
+                  </div>
+                </>
+              )}
+            </form>
+          </div>
+        )}
+
         {/* Cabecera */}
         <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
           <div>
@@ -286,7 +497,19 @@ export const MisPedidosPage: React.FC = () => {
                       </span>
                     </div>
 
-                    <div>{getBadgeEstado(pedidoSeleccionado.IDEstadoPedido, pedidoSeleccionado.NombreEstado)}</div>
+                    <div className="flex items-center gap-2">
+                      {getBadgeEstado(pedidoSeleccionado.IDEstadoPedido, pedidoSeleccionado.NombreEstado)}
+                      {/* Botón Solicitar Devolución para el cliente cuando ya fue entregado */}
+                      {(pedidoSeleccionado.IDEstadoPedido === 4 || pedidoSeleccionado.IDEstadoPedido === 5) && (
+                        <button
+                          type="button"
+                          onClick={abrirModalDevolucionCliente}
+                          className="bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 font-extrabold text-xs px-3 py-1.5 rounded-xl cursor-pointer transition-colors"
+                        >
+                            Solicitar Devolución
+                        </button>
+                      )}
+                    </div>
                   </div>
 
                   {/* Dirección y Datos de Entrega */}
