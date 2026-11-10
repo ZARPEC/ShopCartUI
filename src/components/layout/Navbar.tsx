@@ -11,6 +11,7 @@ import {
   ShieldAlert,
   Menu,
   X,
+  Users,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
@@ -102,6 +103,10 @@ export const Navbar: React.FC = () => {
                 <ShieldAlert className="w-4 h-4" />
                 <span>Bitácora</span>
               </Link>
+              <Link to="/admin/usuarios" className="flex items-center gap-1 hover:text-amber-400 transition-colors">
+                <Users className="w-4 h-4" />
+                <span>Usuarios</span>
+              </Link>
             </>
           )}
 
@@ -177,6 +182,10 @@ export const Navbar: React.FC = () => {
                 className="block py-2 font-medium text-white hover:text-amber-400"
               >
                 Bitácora de Auditoría
+              </Link>
+              <Link to="/admin/usuarios" className="flex items-center gap-1 hover:text-amber-400 transition-colors">
+                <Users className="w-4 h-4" />
+                <span>Usuarios</span>
               </Link>
             </>
           )}

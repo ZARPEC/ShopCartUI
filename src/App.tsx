@@ -11,6 +11,7 @@ import { DashboardPedidosPage } from './pages/admin/DashboardPedidosPage';
 import { BitacoraPage } from './pages/admin/BitacoraPage';
 import { ProtectedRoute } from './routes/ProtectedRoute';
 import { AdminProductosPage } from './pages/admin/AdminProductosPage';
+import { AdminUsuariosPage } from './pages/admin/AdminUsuariosPage';
 
 export const App: React.FC = () => {
   return (
@@ -34,6 +35,7 @@ export const App: React.FC = () => {
             {/* Ruta Protegida: Exclusivo Administrador */}
             <Route element={<ProtectedRoute rolesPermitidos={['ADMINISTRADOR']} />}>
               <Route path="/admin/bitacora" element={<BitacoraPage />} />
+              <Route path="/admin/usuarios" element={<AdminUsuariosPage />} />
               <Route path="/admin/productos" element={<AdminProductosPage />} />
               <Route path="/admin/bitacora" element={<BitacoraPage />} />
             </Route>
