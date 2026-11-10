@@ -12,6 +12,7 @@ import {
   Menu,
   X,
   Users,
+  ShoppingBag,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
@@ -76,6 +77,19 @@ export const Navbar: React.FC = () => {
             >
               <ShoppingCart className="w-4 h-4" />
               <span>Carrito</span>
+            </Link>
+          )}
+          {usuario?.rol === 'CLIENTE' && (
+            <Link to="/mis-pedidos" className="flex items-center gap-1 hover:text-amber-400 transition-colors">
+              <ShoppingBag className="w-4 h-4 text-amber-400" />
+              <span>Mis Pedidos</span>
+            </Link>
+          )}
+
+          {usuario?.rol === 'CLIENTE' &&  (
+            <Link to="/perfil" className="flex items-center gap-1 hover:text-amber-400 transition-colors">
+              <User className="w-4 h-4 text-amber-400" />
+              <span>Mi Cuenta</span>
             </Link>
           )}
 
@@ -146,6 +160,21 @@ export const Navbar: React.FC = () => {
           >
             Catálogo de Productos
           </Link>
+
+          {usuario?.rol === 'CLIENTE' && (
+            <Link to="/mis-pedidos" className="flex items-center gap-1 hover:text-amber-400 transition-colors">
+              <ShoppingBag className="w-4 h-4 text-amber-400" />
+              <span>Mis Pedidos</span>
+            </Link>
+
+          )}
+          {usuario?.rol === 'CLIENTE' && (
+            <Link to="/perfil" className="flex items-center gap-1 hover:text-amber-400 transition-colors">
+              <User className="w-4 h-4 text-amber-400" />
+              <span>Mi Cuenta</span>
+            </Link>
+          )}
+
 
           {(usuario?.rol === 'OPERADOR' || usuario?.rol === 'ADMINISTRADOR') && (
             <>
